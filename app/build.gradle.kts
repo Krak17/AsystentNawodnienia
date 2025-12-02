@@ -47,6 +47,7 @@ dependencies {
     val lifecycle_version = "2.7.0"
     val work_version = "2.11.0"
     val datastore_version = "1.1.1"
+    val navigation_version = "2.7.7"
 
     // Room Database
     implementation("androidx.room:room-runtime:$room_version")
@@ -64,6 +65,9 @@ dependencies {
     // DataStore
     implementation("androidx.datastore:datastore-preferences:$datastore_version")
 
+    // Navigation for Compose
+    implementation("androidx.navigation:navigation-compose:$navigation_version")
+
     // Pozostałe zależności
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -73,6 +77,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation("androidx.compose.material:material-icons-extended") // Ikony
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

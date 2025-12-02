@@ -1,7 +1,8 @@
 package com.example.asystentnawodnienia.ui
 
-import androidx.compose.runtime.State
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.asystentnawodnienia.data.WaterIntake
@@ -11,59 +12,74 @@ import java.time.LocalDate
 
 class WaterViewModel(private val repository: WaterRepository) : ViewModel() {
 
-    private val _totalToday = mutableStateOf(0)
-    val totalToday: State<Int> = _totalToday
+    var totalToday by mutableStateOf(0)
+        private set
 
-    private val _history = mutableStateOf<List<WaterIntake>>(emptyList())
-    val history: State<List<WaterIntake>> = _history
+    var history by mutableStateOf<List<WaterIntake>>(emptyList())
+        private set
 
-    private val _loading = mutableStateOf(false)
-    val loading: State<Boolean> = _loading
-
-    // Nowy stan do przechowywania wartości z suwaka
-    private val _sliderValue = mutableStateOf(200) // Domyślna wartość to 200 ml
-    val sliderValue: State<Int> = _sliderValue
+    var sliderValue by mutableStateOf(200)
+        private set
 
     init {
-        loadInitialData()
-    }
-
-    private fun loadInitialData() {
-        viewModelScope.launch {
-            _loading.value = true
-            refreshTodayTotal()
-            loadHistory()
-            _loading.value = false
-        }
+        refreshData()
     }
 
     fun addWater(amount: Int) {
         viewModelScope.launch {
-            _loading.value = true
             val today = LocalDate.now().toString()
-            val waterIntake = WaterIntake(date = today, amountMl = amount)
+            val waterIntake = WaterIntake(
+                date = today, 
+                amountMl = amount, 
+                timestamp = System.currentTimeMillis(),
+                isAddition = true
+            )
             repository.addWater(waterIntake)
-            refreshTodayTotal()
-            loadHistory()
-            _loading.value = false
+            refreshData()
         }
     }
 
-    // Nowa funkcja do aktualizacji wartości suwaka z UI
-    fun updateSliderValue(newValue: Int) {
-        _sliderValue.value = newValue
-    }
-
-    private fun refreshTodayTotal() {
+    // ZMIANA: Funkcja przyjmuje teraz ilość jako parametr
+    fun removeWater(amount: Int) {
         viewModelScope.launch {
             val today = LocalDate.now().toString()
-            _totalToday.value = repository.getTotalForDay(today)
+            // Tworzymy wpis z ujemną wartością na podstawie wartości z suwaka
+            val removalIntake = WaterIntake(
+                date = today, 
+                amountMl = -amount, // Używamy wartości z parametru
+                timestamp = System.currentTimeMillis(),
+                isAddition = false
+            )
+            repository.addWater(removalIntake)
+            refreshData()
         }
     }
 
-    private fun loadHistory() {
+    fun resetToday() {
         viewModelScope.launch {
-            _history.value = repository.getHistory()
+            repository.resetToday()
+            refreshData()
         }
+    }
+
+    fun updateSliderValue(newValue: Int) {
+        sliderValue = newValue
+    }
+
+    private fun refreshData() {
+        viewModelScope.launch {
+            val today = LocalDate.now().toString()
+            totalToday = repository.getTotalForDay(today)
+            history = repository.getHistory()
+        }
+    }
+    
+    fun getTodayHistory(): List<WaterIntake> {
+        val today = LocalDate.now().toString()
+        return history.filter { it.date == today }.sortedByDescending { it.timestamp }
+    }
+    
+    fun getWeeklySummary(): List<WaterIntake> {
+        return history.take(7)
     }
 }

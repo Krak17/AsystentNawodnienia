@@ -32,11 +32,6 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".SettingsActivity"
-            android:label="Ustawienia"
-            android:exported="false" />
-
     </application>
 
 </manifest>

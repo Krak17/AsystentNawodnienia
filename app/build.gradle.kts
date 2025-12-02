@@ -44,16 +44,25 @@ android {
 
 dependencies {
     val room_version = "2.8.4"
-    val lifecycle_version = "2.7.0" // Użyjemy stabilnej wersji dla ViewModel i LiveData
+    val lifecycle_version = "2.7.0"
+    val work_version = "2.11.0"
+    val datastore_version = "1.1.1"
 
     // Room Database
     implementation("androidx.room:room-runtime:$room_version")
     kapt("androidx.room:room-compiler:$room_version")
     implementation("androidx.room:room-ktx:$room_version")
 
-    // ViewModel and LiveData
+    // ViewModel, LiveData, and Compose integration
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:$lifecycle_version")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:$lifecycle_version")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:$lifecycle_version") // Ta linia naprawi błąd
+
+    // WorkManager
+    implementation("androidx.work:work-runtime-ktx:$work_version")
+
+    // DataStore
+    implementation("androidx.datastore:datastore-preferences:$datastore_version")
 
     // Pozostałe zależności
     implementation(libs.androidx.core.ktx)

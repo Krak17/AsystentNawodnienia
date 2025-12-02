@@ -150,8 +150,7 @@ fun WeeklyChart(data: Map<LocalDate, Int>) {
 
     val animatables = remember(entries) { entries.map { Animatable(0f) } }
     val textMeasurer = rememberTextMeasurer()
-
-    // Tworzymy styl tekstu TUTAJ, w środowisku kompozycyjnym
+    
     val textStyle = TextStyle(
         fontSize = 14.sp,
         color = MaterialTheme.colorScheme.onSurface
@@ -169,9 +168,11 @@ fun WeeklyChart(data: Map<LocalDate, Int>) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Canvas(modifier = Modifier.fillMaxWidth().height(220.dp)) { 
             val barWidth = size.width / (entries.size * 2)
+            val topPadding = 20.dp.toPx() // Rezerwujemy miejsce na tekst
+            val chartHeight = size.height - topPadding
 
             entries.forEachIndexed { index, entry ->
-                val barHeight = (entry.value.toFloat() / maxIntake.toFloat()) * size.height
+                val barHeight = (entry.value.toFloat() / maxIntake.toFloat()) * chartHeight
                 val animatedBarHeight = barHeight * animatables[index].value
 
                 val barColor = if (entry == maxValueBar) secondaryColor else primaryColor
@@ -187,7 +188,7 @@ fun WeeklyChart(data: Map<LocalDate, Int>) {
                 if (animatables[index].value > 0.8f) {
                     val textLayoutResult = textMeasurer.measure(
                         text = AnnotatedString("${entry.value}"),
-                        style = textStyle // Używamy pre-komponowanego stylu
+                        style = textStyle
                     )
                     drawText(
                         textLayoutResult = textLayoutResult,

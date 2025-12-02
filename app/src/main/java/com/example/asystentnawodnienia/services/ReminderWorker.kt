@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import java.util.concurrent.TimeUnit
 
 class ReminderWorker(appContext: Context, workerParams: WorkerParameters) : Worker(appContext, workerParams) {
 
@@ -18,9 +19,25 @@ class ReminderWorker(appContext: Context, workerParams: WorkerParameters) : Work
         const val CHANNEL_ID = "water_reminder_channel"
         const val NOTIFICATION_ID = 1
         const val WORK_NAME = "waterReminderWork"
+        // Okres karencji w minutach. Jeśli zadanie uruchomi się w tym czasie, zostanie zignorowane.
+        private val GRACE_PERIOD_MINUTES = 1L
     }
 
     override fun doWork(): Result {
+        // Odczytaj czas zaplanowania zadania
+        val enqueueTime = inputData.getLong("ENQUEUE_TIME", 0)
+        val currentTime = System.currentTimeMillis()
+
+        // Oblicz, ile czasu minęło
+        val timeSinceEnqueued = currentTime - enqueueTime
+
+        // Sprawdź, czy czas od zaplanowania jest krótszy niż okres karencji
+        if (enqueueTime > 0 && timeSinceEnqueued < TimeUnit.MINUTES.toMillis(GRACE_PERIOD_MINUTES)) {
+            // Jeśli tak, zakończ po cichu. To prawdopodobnie tylko start aplikacji.
+            return Result.success()
+        }
+
+        // Jeśli minęło więcej czasu, wyślij powiadomienie
         sendNotification(applicationContext)
         return Result.success()
     }
@@ -29,7 +46,7 @@ class ReminderWorker(appContext: Context, workerParams: WorkerParameters) : Work
         createNotificationChannel(context)
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info) // Użycie standardowej ikony systemowej
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Czas na wodę!")
             .setContentText("Nie zapomnij wypić szklanki wody, aby pozostać nawodnionym.")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

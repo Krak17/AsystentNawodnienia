@@ -17,20 +17,15 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
-/**
- * Serwis działający w tle, który nasłuchuje na potrząśnięcie telefonem.
- * Używa prywatnej klasy ShakeDetector do hermetyzacji logiki wykrywania gestu.
- */
 class SensorService : Service(), SensorEventListener {
 
     private lateinit var sensorManager: SensorManager
     private var accelerometer: Sensor? = null
-    private val shakeDetector = ShakeDetector() // 1. Stworzenie instancji detektora
+    private val shakeDetector = ShakeDetector()
 
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
 
     companion object {
-        // Kanał komunikacyjny, przez który serwis informuje aplikację o zdarzeniu.
         private val _shakeFlow = MutableSharedFlow<Unit>()
         val shakeFlow = _shakeFlow.asSharedFlow()
     }
@@ -44,13 +39,9 @@ class SensorService : Service(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type == Sensor.TYPE_ACCELEROMETER) {
-            // 2. Przekazanie zdarzenia do detektora i sprawdzenie wyniku.
             val isShakeDetected = shakeDetector.detectShake(event)
 
             if (isShakeDetected) {
-                // 3. Jeśli wykryto potrząśnięcie, wyślij zdarzenie przez Flow.
-                //    Aktywność (MainActivity) nasłuchuje na ten Flow i to ONA
-                //    wywołuje metodę w ViewModelu.
                 serviceScope.launch {
                     _shakeFlow.emit(Unit)
                 }
@@ -74,18 +65,19 @@ class SensorService : Service(), SensorEventListener {
         return null
     }
 
-    /**
-     * Prywatna klasa pomocnicza do wykrywania gestu potrząśnięcia (shake).
-     */
     private class ShakeDetector {
         private var lastX: Float = 0.0f
         private var lastY: Float = 0.0f
         private var lastZ: Float = 0.0f
         private var lastUpdateTime: Long = 0
+        // Zmienna do śledzenia czasu ostatniego wykrytego potrząśnięcia
+        private var lastShakeTime: Long = 0
 
         companion object {
             private const val SHAKE_THRESHOLD = 800
             private const val MIN_TIME_BETWEEN_SAMPLES_MS = 100
+            // Czas w milisekundach, przez który kolejne wstrząsy będą ignorowane
+            private const val SHAKE_COOLDOWN_MS = 2000 // 2 sekundy
         }
 
         fun detectShake(event: SensorEvent): Boolean {
@@ -104,7 +96,12 @@ class SensorService : Service(), SensorEventListener {
                 lastZ = z
                 lastUpdateTime = currentTime
 
-                return speed > SHAKE_THRESHOLD
+                // Sprawdź, czy przekroczono próg ORAZ czy minął czas cooldownu
+                if (speed > SHAKE_THRESHOLD && (currentTime - lastShakeTime) > SHAKE_COOLDOWN_MS) {
+                    // Jeśli tak, zaktualizuj czas ostatniego wstrząsu i zwróć true
+                    lastShakeTime = currentTime
+                    return true
+                }
             }
             return false
         }

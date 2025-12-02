@@ -1,9 +1,13 @@
 package com.example.asystentnawodnienia
 
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -13,6 +17,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -62,10 +67,21 @@ class MainActivity : ComponentActivity() {
     private fun listenForShakes() {
         lifecycleScope.launch {
             SensorService.shakeFlow.collectLatest {
-                // Usunięto .value - odwołujemy się bezpośrednio do właściwości
                 val amountToAdd = viewModel.sliderValue
                 viewModel.addWater(amountToAdd)
+                triggerVibration()
             }
+        }
+    }
+
+    private fun triggerVibration() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vibratorManager.defaultVibrator.vibrate(VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            @Suppress("DEPRECATION")
+            val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            vibrator.vibrate(200)
         }
     }
 
@@ -108,14 +124,20 @@ class MainActivity : ComponentActivity() {
 
     private fun scheduleReminderWork() {
         lifecycleScope.launch {
-            // Funkcja .first() jest teraz poprawnie rozpoznawana dzięki importowi
             val frequency = settingsManager.notificationFrequencyFlow.first()
             val isEnabled = settingsManager.notificationsEnabledFlow.first()
             if (!isEnabled) return@launch
 
+            // Tworzymy paczkę danych z aktualnym czasem
+            val inputData = Data.Builder()
+                .putLong("ENQUEUE_TIME", System.currentTimeMillis())
+                .build()
+
             val reminderWorkRequest = PeriodicWorkRequestBuilder<ReminderWorker>(
                 frequency.toLong(), TimeUnit.HOURS
-            ).build()
+            )
+            .setInputData(inputData) // Dołączamy dane do zadania
+            .build()
 
             WorkManager.getInstance(this@MainActivity).enqueueUniquePeriodicWork(
                 ReminderWorker.WORK_NAME,

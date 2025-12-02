@@ -1,5 +1,6 @@
 package com.example.asystentnawodnienia
 
+import android.content.Intent
 import android.os.Bundle
 import android.content.res.Configuration
 import androidx.activity.ComponentActivity
@@ -33,9 +34,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -47,22 +45,44 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.example.asystentnawodnienia.data.WaterIntake
+import com.example.asystentnawodnienia.services.SensorService
 import com.example.asystentnawodnienia.ui.WaterViewModel
 import com.example.asystentnawodnienia.ui.WaterViewModelFactory
 import com.example.asystentnawodnienia.ui.theme.AsystentNawodnieniaTheme
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var viewModel: WaterViewModel
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         val factory = WaterViewModelFactory(applicationContext)
-        val viewModel = ViewModelProvider(this, factory).get(WaterViewModel::class.java)
+        viewModel = ViewModelProvider(this, factory).get(WaterViewModel::class.java)
+
+        val serviceIntent = Intent(this, SensorService::class.java)
+        startService(serviceIntent)
+
+        listenForShakes()
 
         setContent {
             AsystentNawodnieniaTheme {
                 MainScreen(viewModel = viewModel)
+            }
+        }
+    }
+
+    private fun listenForShakes() {
+        lifecycleScope.launch {
+            SensorService.shakeFlow.collectLatest {
+                // Odczytaj aktualną wartość z suwaka przechowywaną w ViewModelu
+                val amountToAdd = viewModel.sliderValue.value
+                viewModel.addWater(amountToAdd)
             }
         }
     }
@@ -202,8 +222,9 @@ fun AnimatedIntakeText(totalIntake: Int, modifier: Modifier = Modifier) {
 
 @Composable
 fun AddWaterSection(viewModel: WaterViewModel) {
-    var sliderValue by remember { mutableStateOf(200f) }
-    val steps = 18 // (1000-50)/50 - 1 = 18
+    // Odczytaj stan suwaka z ViewModelu
+    val sliderValue by viewModel.sliderValue
+    val steps = 18
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -211,17 +232,17 @@ fun AddWaterSection(viewModel: WaterViewModel) {
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = "Wybierz ilość: ${sliderValue.toInt()} ml",
+            text = "Wybierz ilość: $sliderValue ml",
             style = MaterialTheme.typography.titleMedium
         )
         Slider(
-            value = sliderValue,
-            onValueChange = { sliderValue = it },
+            value = sliderValue.toFloat(),
+            onValueChange = { viewModel.updateSliderValue(it.toInt()) }, // Aktualizuj stan w ViewModelu
             valueRange = 50f..1000f,
             steps = steps
         )
         Button(
-            onClick = { viewModel.addWater(sliderValue.toInt()) },
+            onClick = { viewModel.addWater(sliderValue) }, // Użyj wartości z ViewModelu
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Dodaj wodę", fontSize = 18.sp)

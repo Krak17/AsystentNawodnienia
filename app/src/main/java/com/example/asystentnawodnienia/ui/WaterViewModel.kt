@@ -17,9 +17,12 @@ class WaterViewModel(private val repository: WaterRepository) : ViewModel() {
     private val _history = mutableStateOf<List<WaterIntake>>(emptyList())
     val history: State<List<WaterIntake>> = _history
 
-    // Nowy stan do obsługi wskaźnika ładowania
     private val _loading = mutableStateOf(false)
     val loading: State<Boolean> = _loading
+
+    // Nowy stan do przechowywania wartości z suwaka
+    private val _sliderValue = mutableStateOf(200) // Domyślna wartość to 200 ml
+    val sliderValue: State<Int> = _sliderValue
 
     init {
         loadInitialData()
@@ -44,6 +47,11 @@ class WaterViewModel(private val repository: WaterRepository) : ViewModel() {
             loadHistory()
             _loading.value = false
         }
+    }
+
+    // Nowa funkcja do aktualizacji wartości suwaka z UI
+    fun updateSliderValue(newValue: Int) {
+        _sliderValue.value = newValue
     }
 
     private fun refreshTodayTotal() {

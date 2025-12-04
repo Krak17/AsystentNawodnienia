@@ -10,7 +10,6 @@ data class WaterIntake(
     val date: String,      
     val amountMl: Int,     
 
-    // Nowe pola z wartościami domyślnymi
     val timestamp: Long = System.currentTimeMillis(),
     val isAddition: Boolean = true
 )

@@ -6,6 +6,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
 @Composable
+
 fun AppNavigation(waterViewModel: WaterViewModel) {
     val navController = rememberNavController()
 
@@ -23,5 +24,5 @@ fun AppNavigation(waterViewModel: WaterViewModel) {
             // Przekazujemy navController do ekranu ustawień
             SettingsScreen(navController = navController)
         }
-    }
+    }//komentarz do usuniecia
 }

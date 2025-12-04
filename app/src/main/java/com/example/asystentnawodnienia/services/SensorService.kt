@@ -1,8 +1,5 @@
 package com.example.asystentnawodnienia.services
 
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -10,9 +7,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.os.Build
 import android.os.IBinder
-import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -33,9 +28,6 @@ class SensorService : Service(), SensorEventListener {
     companion object {
         private val _shakeFlow = MutableSharedFlow<Unit>()
         val shakeFlow = _shakeFlow.asSharedFlow()
-
-        const val FOREGROUND_CHANNEL_ID = "sensor_service_channel"
-        const val FOREGROUND_NOTIFICATION_ID = 2
     }
 
     override fun onCreate() {
@@ -43,31 +35,6 @@ class SensorService : Service(), SensorEventListener {
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
-
-        // Uruchomienie serwisu jako pierwszoplanowego
-        startForeground(FOREGROUND_NOTIFICATION_ID, createForegroundNotification())
-    }
-
-    private fun createForegroundNotification(): Notification {
-        createForegroundNotificationChannel()
-        return NotificationCompat.Builder(this, FOREGROUND_CHANNEL_ID)
-            .setContentTitle("Asystent Nawodnienia")
-            .setContentText("Nasłuchiwanie na gest potrząśnięcia jest aktywne.")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setPriority(NotificationCompat.PRIORITY_LOW) // Niski priorytet, aby nie przeszkadzać
-            .build()
-    }
-
-    private fun createForegroundNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val serviceChannel = NotificationChannel(
-                FOREGROUND_CHANNEL_ID,
-                "Serwis w Tle",
-                NotificationManager.IMPORTANCE_LOW
-            )
-            val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(serviceChannel)
-        }
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
@@ -89,7 +56,8 @@ class SensorService : Service(), SensorEventListener {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return START_STICKY
+        // ZMIANA: Nie wznawiaj serwisu automatycznie po jego zatrzymaniu przez system.
+        return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? {

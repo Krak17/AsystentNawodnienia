@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            observeSettings()
+            scheduleReminderWork()
         }
     }
 
@@ -55,13 +55,24 @@ class MainActivity : ComponentActivity() {
         settingsManager = SettingsManager(applicationContext)
 
         listenForShakes()
-        observeSettings()
 
         setContent {
             AsystentNawodnieniaTheme {
                 AppNavigation(waterViewModel = viewModel)
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Uruchom serwis, gdy aplikacja jest na pierwszym planie
+        startService(Intent(this, SensorService::class.java))
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Zatrzymaj serwis, gdy aplikacja przechodzi do tła
+        stopService(Intent(this, SensorService::class.java))
     }
 
     private fun listenForShakes() {
@@ -85,59 +96,19 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun observeSettings() {
-        lifecycleScope.launch {
-            settingsManager.notificationsEnabledFlow.collectLatest {
-                if (it) {
-                    askForNotificationPermission()
-                } else {
-                    cancelReminderWork()
-                }
-            }
-        }
-        lifecycleScope.launch {
-            settingsManager.shakeDetectionEnabledFlow.collectLatest {
-                if (it) {
-                    startService(Intent(this@MainActivity, SensorService::class.java))
-                } else {
-                    stopService(Intent(this@MainActivity, SensorService::class.java))
-                }
-            }
-        }
-        lifecycleScope.launch {
-            settingsManager.notificationFrequencyFlow.collectLatest {
-                scheduleReminderWork()
-            }
-        }
-    }
-
-    private fun askForNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            when (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)) {
-                PackageManager.PERMISSION_GRANTED -> scheduleReminderWork()
-                else -> requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-            }
-        } else {
-            scheduleReminderWork()
-        }
-    }
-
     private fun scheduleReminderWork() {
         lifecycleScope.launch {
             val frequency = settingsManager.notificationFrequencyFlow.first()
             val isEnabled = settingsManager.notificationsEnabledFlow.first()
             if (!isEnabled) return@launch
 
-            // Tworzymy paczkę danych z aktualnym czasem
             val inputData = Data.Builder()
                 .putLong("ENQUEUE_TIME", System.currentTimeMillis())
                 .build()
 
             val reminderWorkRequest = PeriodicWorkRequestBuilder<ReminderWorker>(
                 frequency.toLong(), TimeUnit.HOURS
-            )
-            .setInputData(inputData) // Dołączamy dane do zadania
-            .build()
+            ).build()
 
             WorkManager.getInstance(this@MainActivity).enqueueUniquePeriodicWork(
                 ReminderWorker.WORK_NAME,
@@ -150,6 +121,8 @@ class MainActivity : ComponentActivity() {
     private fun cancelReminderWork() {
         WorkManager.getInstance(this).cancelUniqueWork(ReminderWorker.WORK_NAME)
     }
+    
+    // ... (reszta kodu bez zmian)
 }
 
 @Preview(showBackground = true)

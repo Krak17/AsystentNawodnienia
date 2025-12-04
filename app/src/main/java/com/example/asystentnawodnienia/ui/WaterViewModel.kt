@@ -39,14 +39,12 @@ class WaterViewModel(private val repository: WaterRepository) : ViewModel() {
         }
     }
 
-    // ZMIANA: Funkcja przyjmuje teraz ilość jako parametr
     fun removeWater(amount: Int) {
         viewModelScope.launch {
             val today = LocalDate.now().toString()
-            // Tworzymy wpis z ujemną wartością na podstawie wartości z suwaka
             val removalIntake = WaterIntake(
                 date = today, 
-                amountMl = -amount, // Używamy wartości z parametru
+                amountMl = -amount, 
                 timestamp = System.currentTimeMillis(),
                 isAddition = false
             )
@@ -69,8 +67,8 @@ class WaterViewModel(private val repository: WaterRepository) : ViewModel() {
     private fun refreshData() {
         viewModelScope.launch {
             val today = LocalDate.now().toString()
-            totalToday = repository.getTotalForDay(today)
-            history = repository.getHistory()
+            history = repository.getHistory() // Pobierz całą historię
+            totalToday = history.filter { it.date == today }.sumOf { it.amountMl }
         }
     }
     
@@ -79,7 +77,8 @@ class WaterViewModel(private val repository: WaterRepository) : ViewModel() {
         return history.filter { it.date == today }.sortedByDescending { it.timestamp }
     }
     
+    // ZMIANA: Funkcja zwraca teraz całą historię, a nie tylko 7 wpisów
     fun getWeeklySummary(): List<WaterIntake> {
-        return history.take(7)
+        return history
     }
 }

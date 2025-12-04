@@ -27,10 +27,7 @@ class ReminderWorker(appContext: Context, workerParams: WorkerParameters) : Work
 
     override fun doWork(): Result {
         val enqueueTime = inputData.getLong("ENQUEUE_TIME", 0)
-        val currentTime = System.currentTimeMillis()
-        val timeSinceEnqueued = currentTime - enqueueTime
-
-        if (enqueueTime > 0 && timeSinceEnqueued < TimeUnit.MINUTES.toMillis(GRACE_PERIOD_MINUTES)) {
+        if (enqueueTime > 0 && (System.currentTimeMillis() - enqueueTime) < TimeUnit.MINUTES.toMillis(GRACE_PERIOD_MINUTES)) {
             return Result.success()
         }
 
@@ -41,18 +38,18 @@ class ReminderWorker(appContext: Context, workerParams: WorkerParameters) : Work
     private fun sendNotification(context: Context) {
         createNotificationChannel(context)
 
-        // Tworzymy intencję, która otworzy MainActivity po kliknięciu powiadomienia
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
-        val pendingIntent: PendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+        val pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Czas na wodę!")
             .setContentText("Nie zapomnij wypić szklanki wody, aby pozostać nawodnionym.")
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .setContentIntent(pendingIntent) // Ustawiamy akcję po kliknięciu
+            .setPriority(NotificationCompat.PRIORITY_HIGH) // <-- ZMIANA: Wysoki priorytet
+            .setCategory(NotificationCompat.CATEGORY_REMINDER) // Kategoria przypomnienia
+            .setContentIntent(pendingIntent)
             .setAutoCancel(true)
 
         with(NotificationManagerCompat.from(context)) {
@@ -67,7 +64,8 @@ class ReminderWorker(appContext: Context, workerParams: WorkerParameters) : Work
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "Powiadomienia o nawodnieniu"
             val descriptionText = "Kanał dla przypomnień o piciu wody."
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            // ZMIANA: Wysoki priorytet kanału, aby powiadomienie mogło się "wybić"
+            val importance = NotificationManager.IMPORTANCE_HIGH 
             val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
                 description = descriptionText
             }

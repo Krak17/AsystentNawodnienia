@@ -39,9 +39,7 @@ class SensorService : Service(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent?) {
         if (event?.sensor?.type == Sensor.TYPE_ACCELEROMETER) {
-            val isShakeDetected = shakeDetector.detectShake(event)
-
-            if (isShakeDetected) {
+            if (shakeDetector.detectShake(event)) {
                 serviceScope.launch {
                     _shakeFlow.emit(Unit)
                 }
@@ -58,7 +56,8 @@ class SensorService : Service(), SensorEventListener {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return START_STICKY
+        // ZMIANA: Nie wznawiaj serwisu automatycznie po jego zatrzymaniu przez system.
+        return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -70,35 +69,28 @@ class SensorService : Service(), SensorEventListener {
         private var lastY: Float = 0.0f
         private var lastZ: Float = 0.0f
         private var lastUpdateTime: Long = 0
-        // Zmienna do śledzenia czasu ostatniego wykrytego potrząśnięcia
         private var lastShakeTime: Long = 0
 
         companion object {
             private const val SHAKE_THRESHOLD = 800
             private const val MIN_TIME_BETWEEN_SAMPLES_MS = 100
-            // Czas w milisekundach, przez który kolejne wstrząsy będą ignorowane
-            private const val SHAKE_COOLDOWN_MS = 2000 // 2 sekundy
+            private const val SHAKE_COOLDOWN_MS = 2000 
         }
 
         fun detectShake(event: SensorEvent): Boolean {
             val currentTime = System.currentTimeMillis()
-            val timeSinceLastUpdate = currentTime - lastUpdateTime
-
-            if (timeSinceLastUpdate > MIN_TIME_BETWEEN_SAMPLES_MS) {
+            if ((currentTime - lastUpdateTime) > MIN_TIME_BETWEEN_SAMPLES_MS) {
                 val x = event.values[0]
                 val y = event.values[1]
                 val z = event.values[2]
-
-                val speed = abs(x + y + z - lastX - lastY - lastZ) / timeSinceLastUpdate * 10000
+                val speed = abs(x + y + z - lastX - lastY - lastZ) / (currentTime - lastUpdateTime) * 10000
 
                 lastX = x
                 lastY = y
                 lastZ = z
                 lastUpdateTime = currentTime
 
-                // Sprawdź, czy przekroczono próg ORAZ czy minął czas cooldownu
                 if (speed > SHAKE_THRESHOLD && (currentTime - lastShakeTime) > SHAKE_COOLDOWN_MS) {
-                    // Jeśli tak, zaktualizuj czas ostatniego wstrząsu i zwróć true
                     lastShakeTime = currentTime
                     return true
                 }

@@ -10,21 +10,29 @@ import com.example.asystentnawodnienia.data.WaterRepository
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
+/**
+ * Przechowuje i zarządza danymi dla ekranów związanych ze spożyciem wody.
+ */
 class WaterViewModel(private val repository: WaterRepository) : ViewModel() {
 
+    // Przechowuje aktualną sumę spożytej wody dla dzisiejszego dnia.
     var totalToday by mutableStateOf(0)
         private set
 
+    // Przechowuje pełną historię spożycia wody.
     var history by mutableStateOf<List<WaterIntake>>(emptyList())
         private set
 
+    // Przechowuje aktualnie wybraną wartość na suwaku.
     var sliderValue by mutableStateOf(200)
         private set
 
+    // Wywoływane przy pierwszym tworzeniu ViewModelu, aby załadować dane.
     init {
         refreshData()
     }
 
+    // Dodaje nowy wpis o spożyciu wody.
     fun addWater(amount: Int) {
         viewModelScope.launch {
             val today = LocalDate.now().toString()
@@ -39,14 +47,13 @@ class WaterViewModel(private val repository: WaterRepository) : ViewModel() {
         }
     }
 
-    // ZMIANA: Funkcja przyjmuje teraz ilość jako parametr
+    // Tworzy wpis o usunięciu wody (z ujemną wartością).
     fun removeWater(amount: Int) {
         viewModelScope.launch {
             val today = LocalDate.now().toString()
-            // Tworzymy wpis z ujemną wartością na podstawie wartości z suwaka
             val removalIntake = WaterIntake(
                 date = today, 
-                amountMl = -amount, // Używamy wartości z parametru
+                amountMl = -amount, 
                 timestamp = System.currentTimeMillis(),
                 isAddition = false
             )
@@ -55,6 +62,7 @@ class WaterViewModel(private val repository: WaterRepository) : ViewModel() {
         }
     }
 
+    // Resetuje wszystkie dzisiejsze wpisy.
     fun resetToday() {
         viewModelScope.launch {
             repository.resetToday()
@@ -62,24 +70,28 @@ class WaterViewModel(private val repository: WaterRepository) : ViewModel() {
         }
     }
 
+    // Aktualizuje wartość suwaka na podstawie interakcji użytkownika w UI.
     fun updateSliderValue(newValue: Int) {
         sliderValue = newValue
     }
 
+    // Odświeża wszystkie kluczowe dane (sumę i historię) z bazy danych.
     private fun refreshData() {
         viewModelScope.launch {
             val today = LocalDate.now().toString()
-            totalToday = repository.getTotalForDay(today)
             history = repository.getHistory()
+            totalToday = history.filter { it.date == today }.sumOf { it.amountMl }
         }
     }
     
+    // Zwraca listę wpisów tylko z dzisiejszego dnia.
     fun getTodayHistory(): List<WaterIntake> {
         val today = LocalDate.now().toString()
         return history.filter { it.date == today }.sortedByDescending { it.timestamp }
     }
     
+    // Zwraca całą historię do analizy (np. dla wykresu tygodniowego).
     fun getWeeklySummary(): List<WaterIntake> {
-        return history.take(7)
+        return history
     }
 }

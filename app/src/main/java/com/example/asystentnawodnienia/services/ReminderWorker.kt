@@ -65,7 +65,7 @@ class ReminderWorker(appContext: Context, workerParams: WorkerParameters) : Work
             val name = "Powiadomienia o nawodnieniu"
             val descriptionText = "Kanał dla przypomnień o piciu wody."
             // ZMIANA: Wysoki priorytet kanału, aby powiadomienie mogło się "wybić"
-            val importance = NotificationManager.IMPORTANCE_HIGH 
+            val importance = NotificationManager.IMPORTANCE_HIGH
             val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
                 description = descriptionText
             }

@@ -15,9 +15,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import androidx.work.Data
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -28,8 +29,8 @@ import com.example.asystentnawodnienia.ui.AppNavigation
 import com.example.asystentnawodnienia.ui.WaterViewModel
 import com.example.asystentnawodnienia.ui.WaterViewModelFactory
 import com.example.asystentnawodnienia.ui.theme.AsystentNawodnieniaTheme
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
@@ -42,7 +43,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            scheduleReminderWork()
+            // Po uzyskaniu zgody, logika w `observeAndReactToSettings` sama zaplanuje zadanie.
         }
     }
 
@@ -55,6 +56,7 @@ class MainActivity : ComponentActivity() {
         settingsManager = SettingsManager(applicationContext)
 
         listenForShakes()
+        observeAndReactToSettings() // Centralne miejsce zarządzania całą logiką tła.
 
         setContent {
             AsystentNawodnieniaTheme {
@@ -63,66 +65,90 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        // Uruchom serwis, gdy aplikacja jest na pierwszym planie
-        startService(Intent(this, SensorService::class.java))
-    }
-
-    override fun onPause() {
-        super.onPause()
-        // Zatrzymaj serwis, gdy aplikacja przechodzi do tła
-        stopService(Intent(this, SensorService::class.java))
-    }
-
+    // Nasłuchuje na zdarzenia potrząśnięcia i reaguje na nie.
     private fun listenForShakes() {
         lifecycleScope.launch {
             SensorService.shakeFlow.collectLatest {
                 val amountToAdd = viewModel.sliderValue
                 viewModel.addWater(amountToAdd)
-                triggerVibration()
+                triggerVibration() // PRZYWRÓCONO: Wywołanie wibracji.
             }
         }
     }
 
+    // PRZYWRÓCONO: Funkcja wywołująca krótką wibrację.
     private fun triggerVibration() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
-            vibratorManager.defaultVibrator.vibrate(VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE))
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
         } else {
             @Suppress("DEPRECATION")
-            val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+            getSystemService(VIBRATOR_SERVICE) as Vibrator
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(200, VibrationEffect.DEFAULT_AMPLITUDE))
+        } else {
+            @Suppress("DEPRECATION")
             vibrator.vibrate(200)
         }
     }
 
-    private fun scheduleReminderWork() {
+    // Centralna funkcja, która łączy wszystkie ustawienia i reaguje na ich zmiany.
+    private fun observeAndReactToSettings() {
         lifecycleScope.launch {
-            val frequency = settingsManager.notificationFrequencyFlow.first()
-            val isEnabled = settingsManager.notificationsEnabledFlow.first()
-            if (!isEnabled) return@launch
+            // Używamy `repeatOnLifecycle`, aby obserwacja była aktywna tylko gdy aplikacja jest widoczna.
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                combine(
+                    settingsManager.shakeDetectionEnabledFlow,
+                    settingsManager.notificationsEnabledFlow,
+                    settingsManager.notificationFrequencyFlow
+                ) { shake, notifications, frequency ->
+                    Triple(shake, notifications, frequency)
+                }.collectLatest { (shakeEnabled, notificationsEnabled, frequency) ->
+                    
+                    // Zarządzanie serwisem wstrząsów.
+                    if (shakeEnabled && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                        startService(Intent(this@MainActivity, SensorService::class.java))
+                    } else {
+                        stopService(Intent(this@MainActivity, SensorService::class.java))
+                    }
 
-            val inputData = Data.Builder()
-                .putLong("ENQUEUE_TIME", System.currentTimeMillis())
-                .build()
-
-            val reminderWorkRequest = PeriodicWorkRequestBuilder<ReminderWorker>(
-                frequency.toLong(), TimeUnit.HOURS
-            ).build()
-
-            WorkManager.getInstance(this@MainActivity).enqueueUniquePeriodicWork(
-                ReminderWorker.WORK_NAME,
-                ExistingPeriodicWorkPolicy.REPLACE,
-                reminderWorkRequest
-            )
+                    // Zarządzanie powiadomieniami.
+                    if (notificationsEnabled) {
+                        askForNotificationPermissionAndSchedule(frequency)
+                    } else {
+                        cancelReminderWork()
+                    }
+                }
+            }
         }
+    }
+
+    private fun askForNotificationPermissionAndSchedule(frequency: Int) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when (ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)) {
+                PackageManager.PERMISSION_GRANTED -> scheduleReminderWork(frequency)
+                else -> requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        } else {
+            scheduleReminderWork(frequency)
+        }
+    }
+
+    private fun scheduleReminderWork(frequency: Int) {
+        val reminderWorkRequest = PeriodicWorkRequestBuilder<ReminderWorker>(
+            frequency.toLong(), TimeUnit.HOURS
+        ).build()
+
+        WorkManager.getInstance(this@MainActivity).enqueueUniquePeriodicWork(
+            ReminderWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.UPDATE,
+            reminderWorkRequest
+        )
     }
 
     private fun cancelReminderWork() {
         WorkManager.getInstance(this).cancelUniqueWork(ReminderWorker.WORK_NAME)
     }
-    
-    // ... (reszta kodu bez zmian)
 }
 
 @Preview(showBackground = true)

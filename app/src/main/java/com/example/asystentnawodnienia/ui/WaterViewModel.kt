@@ -10,9 +10,7 @@ import com.example.asystentnawodnienia.data.WaterRepository
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-/**
- * Przechowuje i zarządza danymi dla ekranów związanych ze spożyciem wody.
- */
+// Trzymamy stan nawodnienia i udostępniamy go ekranom
 class WaterViewModel(private val repository: WaterRepository) : ViewModel() {
 
     // Przechowuje aktualną sumę spożytej wody dla dzisiejszego dnia.
@@ -27,7 +25,7 @@ class WaterViewModel(private val repository: WaterRepository) : ViewModel() {
     var sliderValue by mutableStateOf(200)
         private set
 
-    // Wywoływane przy pierwszym tworzeniu ViewModelu, aby załadować dane.
+    // Wczytujemy dane na start
     init {
         refreshData()
     }
@@ -37,8 +35,8 @@ class WaterViewModel(private val repository: WaterRepository) : ViewModel() {
         viewModelScope.launch {
             val today = LocalDate.now().toString()
             val waterIntake = WaterIntake(
-                date = today, 
-                amountMl = amount, 
+                date = today,
+                amountMl = amount,
                 timestamp = System.currentTimeMillis(),
                 isAddition = true
             )
@@ -52,8 +50,8 @@ class WaterViewModel(private val repository: WaterRepository) : ViewModel() {
         viewModelScope.launch {
             val today = LocalDate.now().toString()
             val removalIntake = WaterIntake(
-                date = today, 
-                amountMl = -amount, 
+                date = today,
+                amountMl = -amount,
                 timestamp = System.currentTimeMillis(),
                 isAddition = false
             )
@@ -83,13 +81,13 @@ class WaterViewModel(private val repository: WaterRepository) : ViewModel() {
             totalToday = history.filter { it.date == today }.sumOf { it.amountMl }
         }
     }
-    
+
     // Zwraca listę wpisów tylko z dzisiejszego dnia.
     fun getTodayHistory(): List<WaterIntake> {
         val today = LocalDate.now().toString()
         return history.filter { it.date == today }.sortedByDescending { it.timestamp }
     }
-    
+
     // Zwraca całą historię do analizy (np. dla wykresu tygodniowego).
     fun getWeeklySummary(): List<WaterIntake> {
         return history

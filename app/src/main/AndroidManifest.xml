@@ -2,24 +2,34 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Pozwala wysyłać powiadomienia na Androidzie 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Pozwala używać wibracji np. w powiadomieniach -->
     <uses-permission android:name="android.permission.VIBRATE" />
-
+    <!-- Ustawiamy główne parametry aplikacji: backup, ikony, nazwę, motyw oraz deklarujemy komponenty (np. service i activity) -->
     <application
+
         android:allowBackup="true"
+
         android:dataExtractionRules="@xml/data_extraction_rules"
+
         android:fullBackupContent="@xml/backup_rules"
+
         android:icon="@mipmap/ic_launcher"
+
         android:label="@string/app_name"
+
         android:roundIcon="@mipmap/ic_launcher_round"
+
         android:supportsRtl="true"
+
         android:theme="@style/Theme.AsystentNawodnienia">
 
         <service
             android:name=".services.SensorService"
             android:enabled="true"
             android:exported="false" />
-
+    <!-- Główna aktywność startowa aplikacji -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -28,7 +38,7 @@
             android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
+                <!-- Ikona w launcherze -->
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

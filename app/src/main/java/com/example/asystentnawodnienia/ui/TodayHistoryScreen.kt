@@ -30,15 +30,17 @@ import com.example.asystentnawodnienia.data.WaterIntake
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
+// Pokazujemy ekran z dzisiejszą historią picia wody
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodayHistoryScreen(navController: NavController, viewModel: WaterViewModel) {
     Scaffold(
         topBar = {
             TopAppBar(
+
                 title = { Text("Dzisiejsza historia") },
                 navigationIcon = {
+                    // Cofamy do poprzedniego ekranu
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Wróć")
                     }
@@ -46,15 +48,19 @@ fun TodayHistoryScreen(navController: NavController, viewModel: WaterViewModel) 
             )
         }
     ) { paddingValues ->
+        // Pobieramy listę dzisiejszych wpisów
         val todayHistory = viewModel.getTodayHistory()
 
         Column(
             modifier = Modifier.padding(paddingValues).padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Wyświetlamy komunikat, gdy nie ma wpisów
             if (todayHistory.isEmpty()) {
                 Text("Brak danych na dziś.")
             } else {
+                // Wyświetlamy listę dzisiejszych wpisów
+
                 LazyColumn(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(todayHistory) { intake ->
                         HistoryRow(intake = intake)
@@ -64,12 +70,13 @@ fun TodayHistoryScreen(navController: NavController, viewModel: WaterViewModel) 
         }
     }
 }
-
+// Wyświetlamy pojedynczy wpis z ilością i godziną
 @Composable
 fun HistoryRow(intake: WaterIntake) {
+    // Formatujemy czas wpisu do HH:mm
     val formatter = SimpleDateFormat("HH:mm", Locale.getDefault())
     val time = formatter.format(Date(intake.timestamp))
-
+// Ustalamy znak i kolor dla dodania/odjęcia
     val sign = if (intake.isAddition) "+" else ""
     val color = if (intake.isAddition) Color(0xFF4CAF50) else Color.Red
 
@@ -82,11 +89,13 @@ fun HistoryRow(intake: WaterIntake) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Wyświetlamy ilość wody
             Text(
                 text = "$sign${intake.amountMl} ml",
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
                 color = color
             )
+            // Wyświetlamy godzinę wpisu
             Text(
                 text = time,
                 style = MaterialTheme.typography.bodyMedium,

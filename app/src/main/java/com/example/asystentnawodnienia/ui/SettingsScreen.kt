@@ -33,8 +33,9 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    navController: NavController, 
+    navController: NavController,
     modifier: Modifier = Modifier,
+    // Tworzymy ViewModel ustawień
     settingsViewModel: SettingsViewModel = viewModel(factory = SettingsViewModelFactory(context = androidx.compose.ui.platform.LocalContext.current))
 ) {
     Scaffold(
@@ -42,6 +43,7 @@ fun SettingsScreen(
             TopAppBar(
                 title = { Text("Ustawienia") },
                 navigationIcon = {
+                    // Cofamy do poprzedniego ekranu
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Wróć")
                     }
@@ -49,6 +51,7 @@ fun SettingsScreen(
             )
         }
     ) { paddingValues ->
+        // Wyświetlamy zawartość ustawień
         SettingsContent(
             modifier = Modifier.padding(paddingValues),
             settingsViewModel = settingsViewModel
@@ -58,6 +61,7 @@ fun SettingsScreen(
 
 @Composable
 fun SettingsContent(modifier: Modifier = Modifier, settingsViewModel: SettingsViewModel) {
+    //  Pobieramy ustawienia z ViewModel
     val notificationsEnabled by settingsViewModel.notificationsEnabled.collectAsState()
     val shakeEnabled by settingsViewModel.shakeEnabled.collectAsState()
     val notificationFrequency by settingsViewModel.notificationFrequency.collectAsState()
@@ -71,13 +75,13 @@ fun SettingsContent(modifier: Modifier = Modifier, settingsViewModel: SettingsVi
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Nowa sekcja dla dziennego celu
+        // Ustawiamy dzienny cel wody
         DailyGoalSetting(goal = dailyGoal) {
             settingsViewModel.setDailyGoal(it)
         }
-        
-        Divider()
 
+        Divider()
+        // Ustawiamy powiadomienia i ich częstotliwość
         NotificationsSettingsSection(
             notificationsEnabled = notificationsEnabled,
             frequency = notificationFrequency,
@@ -86,7 +90,7 @@ fun SettingsContent(modifier: Modifier = Modifier, settingsViewModel: SettingsVi
         )
 
         Divider()
-
+        // Włączamy/wyłączamy wykrywanie potrząśnięć
         ShakeSetting(shakeEnabled = shakeEnabled) {
             settingsViewModel.setShakeEnabled(it)
         }
@@ -96,7 +100,9 @@ fun SettingsContent(modifier: Modifier = Modifier, settingsViewModel: SettingsVi
 @Composable
 fun DailyGoalSetting(goal: Int, onGoalChange: (Int) -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
+        // Wyświetlamy aktualny cel dzienny
         Text("Dzienny cel: $goal ml", style = MaterialTheme.typography.bodyLarge)
+        // Zmieniamy cel dzienny suwakiem
         Slider(
             value = goal.toFloat(),
             onValueChange = { onGoalChange(it.roundToInt()) },
@@ -120,9 +126,10 @@ fun NotificationsSettingsSection(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Powiadomienia", style = MaterialTheme.typography.bodyLarge)
+            // Włączamy/wyłączamy powiadomienia
             Switch(checked = notificationsEnabled, onCheckedChange = onEnabledChange)
         }
-
+        // Pokazujemy ustawienie częstotliwości tylko gdy powiadomienia są włączone
         AnimatedVisibility(visible = notificationsEnabled) {
             NotificationFrequencySetting(frequency = frequency, onFrequencyChange = onFrequencyChange)
         }
@@ -132,12 +139,14 @@ fun NotificationsSettingsSection(
 @Composable
 fun NotificationFrequencySetting(frequency: Int, onFrequencyChange: (Int) -> Unit) {
     Column(modifier = Modifier.padding(top = 8.dp)) {
+        // Wyświetlamy aktualną częstotliwość powiadomień
         Text("Częstotliwość powiadomień: $frequency godz.", style = MaterialTheme.typography.bodyLarge)
+        // Zmieniamy częstotliwość suwakiem
         Slider(
             value = frequency.toFloat(),
             onValueChange = { onFrequencyChange(it.roundToInt()) },
-            valueRange = 1f..8f, 
-            steps = 6 
+            valueRange = 1f..8f,
+            steps = 6
         )
     }
 }
@@ -150,6 +159,7 @@ fun ShakeSetting(shakeEnabled: Boolean, onCheckedChange: (Boolean) -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text("Wykrywanie potrząśnięć", style = MaterialTheme.typography.bodyLarge)
+        // Włączamy/wyłączamy wykrywanie potrząśnięć
         Switch(checked = shakeEnabled, onCheckedChange = onCheckedChange)
     }
 }

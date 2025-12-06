@@ -9,14 +9,15 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-
+// Miejsce na ustawienia aplikacji zapisane lokalnie
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
-
+// Prosty manager do odczytu i zapisu ustawień użytkownika
 class SettingsManager(context: Context) {
 
     private val dataStore = context.dataStore
 
     companion object {
+        // Klucze ustawień aplikacji
         val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
         val SHAKE_DETECTION_ENABLED = booleanPreferencesKey("shake_detection_enabled")
         val NOTIFICATION_FREQUENCY_HOURS = intPreferencesKey("notification_frequency_hours")
@@ -35,31 +36,31 @@ class SettingsManager(context: Context) {
             it[DAILY_GOAL_ML] = goalInMl
         }
     }
-
+    // Odczyt ustawienia powiadomień
     val notificationsEnabledFlow: Flow<Boolean> = dataStore.data.map {
         it[NOTIFICATIONS_ENABLED] ?: true
     }
-
+    // Zapis ustawienia powiadomień
     suspend fun setNotificationsEnabled(isEnabled: Boolean) {
         dataStore.edit {
             it[NOTIFICATIONS_ENABLED] = isEnabled
         }
     }
-
+    // Odczyt ustawienia wykrywania potrząśnięcia
     val shakeDetectionEnabledFlow: Flow<Boolean> = dataStore.data.map {
         it[SHAKE_DETECTION_ENABLED] ?: true
     }
-
+    // Zapis ustawienia wykrywania potrząśnięcia
     suspend fun setShakeDetectionEnabled(isEnabled: Boolean) {
         dataStore.edit {
             it[SHAKE_DETECTION_ENABLED] = isEnabled
         }
     }
-
+    // Odczyt częstotliwości powiadomień
     val notificationFrequencyFlow: Flow<Int> = dataStore.data.map {
         it[NOTIFICATION_FREQUENCY_HOURS] ?: 2
     }
-
+    // Zapis częstotliwości powiadomień
     suspend fun setNotificationFrequency(hours: Int) {
         dataStore.edit {
             it[NOTIFICATION_FREQUENCY_HOURS] = hours

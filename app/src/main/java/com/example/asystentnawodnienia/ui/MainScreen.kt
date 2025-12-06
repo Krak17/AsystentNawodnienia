@@ -43,18 +43,21 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(navController: NavController, viewModel: WaterViewModel) {
-
+// Główny szkielet ekranu z górnym paskiem
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Asystent Nawodnienia") },
                 actions = {
+                    // Przejście do podsumowania tygodnia
                     IconButton(onClick = { navController.navigate("week_summary") }) {
                         Icon(Icons.Default.DateRange, contentDescription = "Podsumowanie tygodnia")
                     }
+                    // Przejście do historii dziennej
                     IconButton(onClick = { navController.navigate("today_history") }) {
                         Icon(Icons.Default.History, contentDescription = "Historia dzienna")
                     }
+                    // Przejście do ustawień
                     IconButton(onClick = { navController.navigate("settings") }) {
                         Icon(Icons.Default.Settings, contentDescription = "Ustawienia")
                     }
@@ -62,6 +65,7 @@ fun MainScreen(navController: NavController, viewModel: WaterViewModel) {
             )
         }
     ) { paddingValues ->
+        // Wyświetlamy główną zawartość
         MainContent(
             modifier = Modifier.padding(paddingValues),
             viewModel = viewModel
@@ -71,8 +75,9 @@ fun MainScreen(navController: NavController, viewModel: WaterViewModel) {
 
 @Composable
 fun MainContent(modifier: Modifier = Modifier, viewModel: WaterViewModel) {
-    // Pobieramy instancję SettingsManager, aby odczytać cel dzienny
+    // Tworzymy manager ustawień, aby odczytać cel dzienny
     val settingsManager = SettingsManager(LocalContext.current)
+    // Odczytujemy aktualny cel dzienny z ustawień
     val dailyGoal by settingsManager.dailyGoalFlow.collectAsState(initial = 3000)
 
     Column(
@@ -80,10 +85,11 @@ fun MainContent(modifier: Modifier = Modifier, viewModel: WaterViewModel) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Wyświetlamy postęp nawodnienia
         WaterProgressIndicator(totalToday = viewModel.totalToday, dailyGoal = dailyGoal)
 
         Spacer(modifier = Modifier.height(16.dp))
-
+        // Wyświetlamy wybraną ilość z suwaka
         Text("Wybierz ilość: ${viewModel.sliderValue} ml", style = MaterialTheme.typography.bodyLarge)
         Slider(
             value = viewModel.sliderValue.toFloat(),
@@ -95,13 +101,16 @@ fun MainContent(modifier: Modifier = Modifier, viewModel: WaterViewModel) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            // Dodajemy wodę według suwaka
             Button(onClick = { viewModel.addWater(viewModel.sliderValue) }) {
                 Text("Dodaj")
             }
+            // Usuwamy wodę według suwaka
             Button(onClick = { viewModel.removeWater(viewModel.sliderValue) }) {
                 Text("Usuń")
             }
         }
+        // Resetujemy dzisiejsze wpisy
         Button(onClick = { viewModel.resetToday() }) {
             Text("Reset dnia")
         }
@@ -110,7 +119,9 @@ fun MainContent(modifier: Modifier = Modifier, viewModel: WaterViewModel) {
 
 @Composable
 fun WaterProgressIndicator(totalToday: Int, dailyGoal: Int) {
+    // Liczymy procent celu dziennego
     val progress = (totalToday.toFloat() / dailyGoal.toFloat()).coerceIn(0f, 1f)
+    // Ustawiamy płynną animację postępu
 
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
@@ -121,6 +132,7 @@ fun WaterProgressIndicator(totalToday: Int, dailyGoal: Int) {
         modifier = Modifier.size(200.dp),
         contentAlignment = Alignment.Center
     ) {
+        // Wyświetlamy okrągły wskaźnik postępu
         CircularProgressIndicator(
             progress = { animatedProgress },
             modifier = Modifier.fillMaxSize(),
@@ -129,10 +141,12 @@ fun WaterProgressIndicator(totalToday: Int, dailyGoal: Int) {
             trackColor = MaterialTheme.colorScheme.primaryContainer
         )
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // Wyświetlamy ile wypito dzisiaj
             Text(
                 text = "$totalToday ml",
                 style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold)
             )
+            // Wyświetlamy cel dzienny
             Text(
                 text = "/ $dailyGoal ml",
                 style = MaterialTheme.typography.bodyMedium

@@ -13,6 +13,7 @@ import com.example.asystentnawodnienia.data.WaterRepository
  *
  * @param context Kontekst aplikacji, niezbędny do utworzenia instancji bazy danych.
  */
+// Tworzymy WaterViewModel z potrzebnymi zależnościami
 class WaterViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
 
     /**

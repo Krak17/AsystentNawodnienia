@@ -56,20 +56,26 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WeekSummaryScreen(navController: NavController, viewModel: WaterViewModel) {
-    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
-    var showDatePicker by remember { mutableStateOf(false) }
 
+// Pokazujemy ekran podsumowania tygodnia
+fun WeekSummaryScreen(navController: NavController, viewModel: WaterViewModel) {
+    // Trzymamy datę, według której liczymy tydzień
+    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    // Trzymamy stan okna wyboru daty
+    var showDatePicker by remember { mutableStateOf(false) }
+    // Pokazujemy okno wyboru daty
     if (showDatePicker) {
+        // Ustawiamy startowo wybraną datę
         val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli())
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(onClick = { 
+                TextButton(onClick = {
+                    // Zapisujemy wybraną datę
                     datePickerState.selectedDateMillis?.let {
                         selectedDate = Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
                     }
-                    showDatePicker = false 
+                    showDatePicker = false
                 }) { Text("OK") }
             },
             dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Anuluj") } }
@@ -78,6 +84,7 @@ fun WeekSummaryScreen(navController: NavController, viewModel: WaterViewModel) {
 
     Scaffold(
         topBar = {
+            // Wyświetlamy górny pasek z nawigacją tygodni
             WeekSummaryTopBar(
                 selectedDate = selectedDate,
                 onPreviousWeek = { selectedDate = selectedDate.minusWeeks(1) },
@@ -87,16 +94,20 @@ fun WeekSummaryScreen(navController: NavController, viewModel: WaterViewModel) {
             )
         }
     ) { paddingValues ->
+        // Pobieramy całą historię
         val allHistory = viewModel.getWeeklySummary()
+        // Liczymy dane dla wybranego tygodnia
         val weeklyData = getWeekDataForDate(allHistory, selectedDate)
 
         Column(
             modifier = Modifier.padding(paddingValues).padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Wyświetlamy komunikat, gdy nie ma danych
             if (weeklyData.values.sum() == 0) {
                 Text("Brak danych dla wybranego tygodnia.")
             } else {
+                // Wyświetlamy wykres tygodniowy
                 WeeklyChart(weeklyData)
             }
         }
@@ -105,40 +116,52 @@ fun WeekSummaryScreen(navController: NavController, viewModel: WaterViewModel) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+// Budujemy górny pasek z zakresem tygodnia i przyciskami
 fun WeekSummaryTopBar(
     selectedDate: LocalDate, onPreviousWeek: () -> Unit, onNextWeek: () -> Unit, onDateClick: () -> Unit, onBackClick: () -> Unit) {
+    // Wyznaczamy początek tygodnia
     val startOfWeek = selectedDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+    // Wyznaczamy koniec tygodnia
     val endOfWeek = selectedDate.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
+    // Ustawiamy format dat w tytule
     val formatter = DateTimeFormatter.ofPattern("dd.MM")
 
     TopAppBar(
+        // Pokazujemy zakres tygodnia
         title = { Text("${startOfWeek.format(formatter)} - ${endOfWeek.format(formatter)}") },
         navigationIcon = { IconButton(onClick = onBackClick) { Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Wróć") } },
         actions = {
+            // Przechodzimy do poprzedniego tygodnia
             IconButton(onClick = onPreviousWeek) { Icon(imageVector = Icons.Default.ArrowLeft, contentDescription = "Poprzedni tydzień") }
+            // Otwieramy wybór daty
             IconButton(onClick = onDateClick) { Icon(imageVector = Icons.Default.DateRange, contentDescription = "Wybierz datę") }
+            // Przechodzimy do następnego tygodnia
             IconButton(onClick = onNextWeek) { Icon(imageVector = Icons.Default.ArrowRight, contentDescription = "Następny tydzień") }
         }
     )
 }
-
+// Liczymy sumy wody dla każdego dnia tygodnia
 fun getWeekDataForDate(history: List<WaterIntake>, date: LocalDate): Map<LocalDate, Int> {
+    // Ustalamy zakres tygodnia
     val startOfWeek = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
     val endOfWeek = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
+    // Tworzymy listę 7 dni tygodnia
     val weekDates = (0..6).map { startOfWeek.plusDays(it.toLong()) }
 
+    // Filtrujemy wpisy do wybranego tygodnia i sumujemy po dacie
     val historyForWeek = history
-        .filter { 
+        .filter {
             val entryDate = LocalDate.parse(it.date)
             !entryDate.isBefore(startOfWeek) && !entryDate.isAfter(endOfWeek)
         }
         .groupBy { it.date }
         .mapValues { entry -> entry.value.sumOf { it.amountMl } }
-
+// Zwracamy mapę: dzień -> suma ml
     return weekDates.associateWith { historyForWeek[it.toString()] ?: 0 }
 }
 
 @Composable
+// Rysujemy prosty wykres słupkowy tygodnia
 fun WeeklyChart(data: Map<LocalDate, Int>) {
     val entries = data.entries.toList()
     val maxIntake = entries.maxOfOrNull { it.value } ?: 1
@@ -150,7 +173,7 @@ fun WeeklyChart(data: Map<LocalDate, Int>) {
 
     val animatables = remember(entries) { entries.map { Animatable(0f) } }
     val textMeasurer = rememberTextMeasurer()
-    
+
     val textStyle = TextStyle(
         fontSize = 14.sp,
         color = MaterialTheme.colorScheme.onSurface
@@ -166,25 +189,29 @@ fun WeeklyChart(data: Map<LocalDate, Int>) {
     }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        Canvas(modifier = Modifier.fillMaxWidth().height(220.dp)) { 
+        Canvas(modifier = Modifier.fillMaxWidth().height(220.dp)) {
+            // Ustalamy szerokość słupków
             val barWidth = size.width / (entries.size * 2)
-            val topPadding = 20.dp.toPx() // Rezerwujemy miejsce na tekst
+            // Zostawiamy miejsce na liczby nad słupkami
+            val topPadding = 20.dp.toPx()
             val chartHeight = size.height - topPadding
 
             entries.forEachIndexed { index, entry ->
+                // Liczymy wysokość słupka
                 val barHeight = (entry.value.toFloat() / maxIntake.toFloat()) * chartHeight
+                // Uwzględniamy animację
                 val animatedBarHeight = barHeight * animatables[index].value
-
+                // Wyróżniamy najwyższy słupek innym kolorem
                 val barColor = if (entry == maxValueBar) secondaryColor else primaryColor
                 val xOffset = index * barWidth * 2 + barWidth / 2
-
+                // Rysujemy zaokrąglony słupek
                 drawRoundRect(
                     color = barColor,
                     topLeft = Offset(x = xOffset, y = size.height - animatedBarHeight),
                     size = Size(width = barWidth, height = animatedBarHeight),
                     cornerRadius = CornerRadius(x = 10f, y = 10f)
                 )
-
+                // Pokazujemy wartość nad słupkiem pod koniec animacji
                 if (animatables[index].value > 0.8f) {
                     val textLayoutResult = textMeasurer.measure(
                         text = AnnotatedString("${entry.value}"),
@@ -201,6 +228,7 @@ fun WeeklyChart(data: Map<LocalDate, Int>) {
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
+        // Pokazujemy dni tygodnia pod wykresem
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
             entries.forEach {
                 Text(it.key.format(formatter), style = MaterialTheme.typography.bodySmall)
